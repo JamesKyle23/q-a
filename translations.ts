@@ -9,8 +9,10 @@ export const UI_STRINGS: Record<Language, any> = {
     intro: "You are about to initiate a comprehensive evaluation of the periodic table elements. 100 samples will be presented sequentially. Maximum cognitive throughput is expected.",
     langSelect: "Select Interface Language",
     init: "INITIALIZE PROTOCOL",
+    initHard: "HARD MODE [30s TOTAL]",
     timeLimit: "Time Constraint",
     timeDetail: "30.00s per inquiry. Auto-advance enabled.",
+    hardTimeDetail: "30.00s TOTAL for 100 inquiries. Instant transition.",
     scoreLogic: "Scoring Logic",
     scoreDetail: "+1.0 Success / -1.0 Error Calibration.",
     liveEfficiency: "Live Efficiency",
@@ -30,7 +32,8 @@ export const UI_STRINGS: Record<Language, any> = {
     inputLabel: "Input",
     targetLabel: "Target",
     temporalLimit: "Temporal Limit",
-    abort: "ABORT SEQUENCE"
+    abort: "ABORT SEQUENCE",
+    hardModeActive: "CRITICAL SPEEDRUN ACTIVE"
   },
   zh: {
     title: "元素精通评估",
@@ -39,8 +42,10 @@ export const UI_STRINGS: Record<Language, any> = {
     intro: "您即将启动对元素周期表元素的全面评估。100个样本将按顺序呈现。预期达到最高认知吞吐量。",
     langSelect: "选择界面语言",
     init: "启动协议",
+    initHard: "困难模式 [总计 30秒]",
     timeLimit: "时间约束",
     timeDetail: "每项查询 30.00 秒。自动推进已启用。",
+    hardTimeDetail: "全部 100 项查询共 30.00 秒。即时切换。",
     scoreLogic: "计分逻辑",
     scoreDetail: "+1.0 成功 / -1.0 错误校准。",
     liveEfficiency: "实时效率",
@@ -60,6 +65,7 @@ export const UI_STRINGS: Record<Language, any> = {
     inputLabel: "输入",
     targetLabel: "目标",
     temporalLimit: "时间限制",
-    abort: "终止序列"
+    abort: "终止序列",
+    hardModeActive: "关键极限竞速激活"
   }
 };

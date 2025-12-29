@@ -9,9 +9,10 @@ interface QuizCardProps {
   selectedAnswer: string | null;
   correctAnswer: string | null;
   lang: Language;
+  isHardMode?: boolean;
 }
 
-const QuizCard: React.FC<QuizCardProps> = ({ question, onAnswer, selectedAnswer, correctAnswer, lang }) => {
+const QuizCard: React.FC<QuizCardProps> = ({ question, onAnswer, selectedAnswer, correctAnswer, lang, isHardMode }) => {
   const t = UI_STRINGS[lang];
   const questionText = lang === 'en' ? question.text : question.textZh;
   const options = lang === 'en' ? question.options : question.optionsZh;
@@ -40,12 +41,17 @@ const QuizCard: React.FC<QuizCardProps> = ({ question, onAnswer, selectedAnswer,
           if (!selectedAnswer) {
             buttonClass += "bg-slate-800/50 border-transparent hover:border-cyan-500/50 hover:bg-slate-800 text-slate-300";
           } else {
-            if (isCorrect) {
-              buttonClass += "bg-emerald-500/20 border-emerald-500 text-emerald-400";
-            } else if (isWrong) {
-              buttonClass += "bg-rose-500/20 border-rose-500 text-rose-400";
+            // Hard mode: Do not reveal correctness
+            if (isHardMode) {
+              buttonClass += isSelected ? "bg-cyan-500/20 border-cyan-500 text-cyan-400" : "bg-slate-800/50 border-transparent text-slate-500 opacity-50";
             } else {
-              buttonClass += "bg-slate-800/50 border-transparent text-slate-500 opacity-50 cursor-not-allowed";
+              if (isCorrect) {
+                buttonClass += "bg-emerald-500/20 border-emerald-500 text-emerald-400";
+              } else if (isWrong) {
+                buttonClass += "bg-rose-500/20 border-rose-500 text-rose-400";
+              } else {
+                buttonClass += "bg-slate-800/50 border-transparent text-slate-500 opacity-50 cursor-not-allowed";
+              }
             }
           }
 

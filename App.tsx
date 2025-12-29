@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, FlaskConical, Atom, RefreshCw, Zap, Globe, XCircle } from 'lucide-react';
+import { Activity, FlaskConical, Atom, RefreshCw, Zap, Globe, XCircle, Flame } from 'lucide-react';
 import { QUIZ_QUESTIONS } from './data';
 import { GameStatus, Language } from './types';
 import { UI_STRINGS } from './translations';
@@ -9,20 +9,20 @@ import ProgressBar from './components/ProgressBar';
 import Results from './components/Results';
 import Timer from './components/Timer';
 
-const TIMER_LIMIT = 30;
+const TIMER_LIMIT_PER_QUESTION = 30;
+const HARD_MODE_GLOBAL_TIMER = 30;
 
 function App() {
   const [lang, setLang] = useState<Language>('en');
   const [status, setStatus] = useState<GameStatus>(GameStatus.START);
+  const [isHardMode, setIsHardMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [incorrectCount, setIncorrectCount] = useState(0);
   const [timedOutCount, setTimedOutCount] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(TIMER_LIMIT);
+  const [timeLeft, setTimeLeft] = useState(TIMER_LIMIT_PER_QUESTION);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const t = UI_STRINGS[lang];
 
@@ -30,11 +30,14 @@ function App() {
     if (currentIndex + 1 < QUIZ_QUESTIONS.length) {
       setCurrentIndex(prev => prev + 1);
       setSelectedAnswer(null);
-      setTimeLeft(TIMER_LIMIT);
+      // Only reset timeLeft if in standard mode
+      if (!isHardMode) {
+        setTimeLeft(TIMER_LIMIT_PER_QUESTION);
+      }
     } else {
       setStatus(GameStatus.FINISHED);
     }
-  }, [currentIndex]);
+  }, [currentIndex, isHardMode]);
 
   const handleAnswer = useCallback((answer: string | null) => {
     if (selectedAnswer !== null || status !== GameStatus.PLAYING) return;
@@ -56,44 +59,69 @@ function App() {
       }
     }
 
-    setTimeout(() => {
+    if (isHardMode) {
+      // Immediate progression in hard mode
       nextQuestion();
-    }, 1200);
-  }, [currentIndex, selectedAnswer, status, nextQuestion, lang]);
+    } else {
+      // Feedback delay in standard mode
+      setTimeout(() => {
+        nextQuestion();
+      }, 1200);
+    }
+  }, [currentIndex, selectedAnswer, status, nextQuestion, lang, isHardMode]);
 
   const abortQuiz = () => {
-    // Show results screen first as requested
     setStatus(GameStatus.FINISHED);
   };
 
   const backToStart = () => {
-    // Return to main screen for next student to choose language
     setStatus(GameStatus.START);
+    setIsHardMode(false);
   };
 
+  // RELENTLESS HARD MODE TIMER
+  // This effect runs independently of question changes to ensure zero pauses
   useEffect(() => {
-    if (status === GameStatus.PLAYING && selectedAnswer === null) {
-      if (timeLeft > 0) {
-        timerRef.current = setInterval(() => {
-          setTimeLeft(prev => prev - 1);
-        }, 1000);
-      } else {
-        handleAnswer(null);
-      }
+    if (status === GameStatus.PLAYING && isHardMode) {
+      const globalTimer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            setStatus(GameStatus.FINISHED);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(globalTimer);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [timeLeft, status, selectedAnswer, handleAnswer]);
+  }, [status === GameStatus.PLAYING, isHardMode]);
 
-  const startGame = () => {
+  // STANDARD MODE TIMER
+  // This timer pauses during answer feedback and resets per question
+  useEffect(() => {
+    if (status === GameStatus.PLAYING && !isHardMode && selectedAnswer === null) {
+      const questionTimer = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            handleAnswer(null);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(questionTimer);
+    }
+  }, [status, isHardMode, selectedAnswer, handleAnswer]);
+
+  const startGame = (hard: boolean = false) => {
     setScore(0);
     setCurrentIndex(0);
     setCorrectCount(0);
     setIncorrectCount(0);
     setTimedOutCount(0);
     setSelectedAnswer(null);
-    setTimeLeft(TIMER_LIMIT);
+    setIsHardMode(hard);
+    setTimeLeft(hard ? HARD_MODE_GLOBAL_TIMER : TIMER_LIMIT_PER_QUESTION);
     setStatus(GameStatus.PLAYING);
   };
 
@@ -123,8 +151,10 @@ function App() {
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{t.liveEfficiency}</span>
               <div className="flex items-center gap-1">
-                <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span className="text-lg font-mono text-emerald-400 font-bold">{score >= 0 ? '+' : ''}{score}</span>
+                <Activity className={`w-4 h-4 ${score >= 0 ? 'text-emerald-400' : 'text-rose-400'} animate-pulse`} />
+                <span className={`text-lg font-mono font-bold ${score >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {score >= 0 ? '+' : ''}{score}
+                </span>
               </div>
             </div>
             <div className="h-10 w-[1px] bg-slate-800"></div>
@@ -185,25 +215,35 @@ function App() {
               </div>
             </div>
             
-            <button
-              onClick={startGame}
-              className="group relative px-10 py-5 bg-cyan-500 text-slate-950 font-bold rounded-2xl hover:bg-cyan-400 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(34,211,238,0.3)]"
-            >
-              {t.init}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => startGame(false)}
+                className="group relative px-10 py-5 bg-cyan-500 text-slate-950 font-bold rounded-2xl hover:bg-cyan-400 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(34,211,238,0.3)]"
+              >
+                {t.init}
+              </button>
+              <button
+                onClick={() => startGame(true)}
+                className="group relative px-10 py-5 bg-rose-600 text-white font-bold rounded-2xl hover:bg-rose-500 transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-[0_0_30px_rgba(244,63,94,0.3)] flex items-center justify-center gap-2"
+              >
+                <Flame className="w-5 h-5 text-amber-300" />
+                {t.initHard}
+              </button>
+            </div>
           </div>
         )}
 
         {status === GameStatus.PLAYING && (
           <div className="w-full flex flex-col items-center">
             <ProgressBar current={currentIndex + 1} total={QUIZ_QUESTIONS.length} lang={lang} />
-            <Timer seconds={timeLeft} total={TIMER_LIMIT} lang={lang} />
+            <Timer seconds={timeLeft} total={isHardMode ? HARD_MODE_GLOBAL_TIMER : TIMER_LIMIT_PER_QUESTION} lang={lang} />
             <QuizCard 
               question={QUIZ_QUESTIONS[currentIndex]} 
               onAnswer={handleAnswer}
               selectedAnswer={selectedAnswer}
               correctAnswer={lang === 'en' ? QUIZ_QUESTIONS[currentIndex].answer : QUIZ_QUESTIONS[currentIndex].answerZh}
               lang={lang}
+              isHardMode={isHardMode}
             />
             
             <div className="mt-12 flex flex-col items-center gap-6">
@@ -216,8 +256,8 @@ function App() {
               </button>
               
               <div className="flex items-center gap-4 text-slate-600 font-mono text-[10px] tracking-widest uppercase">
-                <Activity className="w-3 h-3" />
-                {t.syncActive}
+                <Activity className={`w-3 h-3 ${isHardMode ? 'text-rose-500' : ''}`} />
+                {isHardMode ? t.hardModeActive : t.syncActive}
               </div>
             </div>
           </div>
